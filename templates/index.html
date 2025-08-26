@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>제인's 벙비 정산하기</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <header>
+      <h1>벙비 정산</h1>
+      <p>팝업으로 참석자 수를 입력 → 표에 이름 행 생성 → 1~4차 금액 입력 → 참석 체크 → 정산.</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <div class="row">
+          <button id="btnInit">참석자 수 입력</button>
+          <label class="inline">
+            반올림 단위
+            <select id="roundUnit">
+              <option value="1">없음(원 단위)</option>
+              <option value="10">10원</option>
+              <option value="100" selected>100원</option>
+              <option value="1000">1,000원</option>
+            </select>
+          </label>
+          <label class="inline">
+            <input type="checkbox" id="preserveTotal" checked>
+            총액 일치시키기
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>차수 금액 (원)</h2>
+        <div class="round-row">
+          <label>1차</label><input type="number" id="amt1" min="0" step="1" value="0">
+          <label>2차</label><input type="number" id="amt2" min="0" step="1" value="0">
+          <label>3차</label><input type="number" id="amt3" min="0" step="1" value="0">
+          <label>4차</label><input type="number" id="amt4" min="0" step="1" value="0">
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>참석 표</h2>
+        <div class="table-wrap">
+          <table id="tbl">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>1차</th>
+                <th>2차</th>
+                <th>3차</th>
+                <th>4차</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="row small">
+          <span class="muted">체크박스: 참석여부 / 이름은 직접 수정 가능</span>
+          <button id="btnAll1">1차 전체</button>
+          <button id="btnNone1">1차 해제</button>
+          <button id="btnAll2">2차 전체</button>
+          <button id="btnNone2">2차 해제</button>
+          <button id="btnAll3">3차 전체</button>
+          <button id="btnNone3">3차 해제</button>
+          <button id="btnAll4">4차 전체</button>
+          <button id="btnNone4">4차 해제</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row">
+          <button id="btnCalc">정산하기</button>
+        </div>
+        <div id="summary" class="summary"></div>
+        <div class="table-wrap">
+          <table id="resultTable">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>참석</th>
+                <th class="num">실금액(합)</th>
+                <th class="num">최종금액</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <small>© 2025 · 로컬 Flask 앱</small>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  </body>
+</html>
