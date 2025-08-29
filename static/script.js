@@ -1,6 +1,14 @@
 // Front-end logic for hoeshik Flask app
 
 const tbody = document.getElementById("tbody");
+
+// Hide 'preserveTotal' UI if present, since totals no longer need to match
+const preserveEl = document.getElementById("preserveTotal");
+if (preserveEl) {
+  const wrap = preserveEl.closest('label') || preserveEl.closest('.row') || preserveEl.parentElement;
+  if (wrap) wrap.style.display = "none";
+}
+
 const resultBody = document.getElementById("resultBody");
 const summary = document.getElementById("summary");
 
@@ -17,6 +25,9 @@ function buildRows(cnt){
     const tr = document.createElement("tr");
     const tdName = document.createElement("td"); const nameInput = document.createElement("input");
     nameInput.type = "text"; nameInput.value = `참가자${i+1}`; nameInput.style.width = "100%";
+    nameInput.addEventListener('focus', ()=>{
+      if(/^참가자\d+$/.test(nameInput.value||'')) nameInput.value='';
+    });
     tdName.appendChild(nameInput); tr.appendChild(tdName);
     for(let j=0;j<4;j++){ const td = document.createElement("td"); td.className = "center";
       const cb = document.createElement("input"); cb.type = "checkbox"; cb.dataset.round = String(j+1);
@@ -35,8 +46,7 @@ function getRoundAmounts(){
 
 document.getElementById("btnCalc").addEventListener("click", async ()=>{
   const unit = parseInt(document.getElementById("roundUnit").value,10) || 1;
-  const preserve = !!document.getElementById("preserveTotal").checked;
-  const amounts = getRoundAmounts();
+const amounts = getRoundAmounts();
 
   const people = [];
   [...tbody.querySelectorAll("tr")].forEach(tr=>{
@@ -45,7 +55,7 @@ document.getElementById("btnCalc").addEventListener("click", async ()=>{
     people.push({ name, attend: [...cbs].map(cb => cb.checked) });
   });
 
-  const payload = { unit: unit, preserve_total: preserve, round_amounts: amounts, people: people };
+  const payload = { unit: unit, round_amounts: amounts, people: people };
 
   const res = await fetch("/calculate", {
     method: "POST",
@@ -59,7 +69,7 @@ document.getElementById("btnCalc").addEventListener("click", async ()=>{
 
 function renderResult(data){
   const parts = data.per_round.map(r => `${r.round_label}: ${r.count}명 / ${formatNum(r.amount)}원`);
-  summary.innerHTML = `총액: <strong>${formatNum(data.grand_total)}</strong>원 · ${parts.join(" · ")}`;
+  summary.innerHTML = `총 회식비: <strong>${formatNum(data.grand_total)}</strong>원 · 총 정산금액: <strong>${formatNum(data.grand_final_total||0)}</strong>원 · ${parts.join(" · ")}`;
   resultBody.innerHTML = "";
   data.results.forEach(row => {
     const tr = document.createElement("tr");
@@ -91,3 +101,26 @@ function bulkSet(roundIdx, val){
 
 function formatNum(n){ return (n||0).toLocaleString("ko-KR"); }
 function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c])); }
+
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  const originalBtn = document.getElementById("btnCalc");
+  if (originalBtn) {
+    // Create a new prominent button next to the unit input if available
+    const unitEl = document.getElementById("roundUnit") || originalBtn.parentElement;
+    const newBtn = document.createElement("button");
+    newBtn.id = "btnCalcPrimary";
+    newBtn.className = "primary";
+    newBtn.textContent = "정산하기";
+    if (unitEl && unitEl.parentElement) {
+      unitEl.parentElement.insertBefore(newBtn, unitEl.nextSibling);
+    } else {
+      originalBtn.parentElement.appendChild(newBtn);
+    }
+    // Hide original button
+    originalBtn.style.display = "none";
+    // Wire the same click behavior by triggering original
+    newBtn.addEventListener("click", ()=> originalBtn.click());
+  }
+});
+

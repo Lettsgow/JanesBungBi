@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from math import floor
+import math
 
 app = Flask(__name__)
 
@@ -12,8 +13,7 @@ def calculate():
     # Request JSON format:
     # {
     #   "unit": 100,
-    #   "preserve_total": true,
-    #   "round_amounts": [a1,a2,a3,a4],
+    #       #   "round_amounts": [a1,a2,a3,a4],
     #   "people": [
     #     {"name": "홍길동", "attend": [true,false,true,false]},
     #     ...
@@ -21,7 +21,6 @@ def calculate():
     # }
     data = request.get_json(force=True, silent=True) or {}
     unit = int(data.get("unit", 100))
-    preserve_total = bool(data.get("preserve_total", True))
     round_amounts = data.get("round_amounts", [0,0,0,0])
     people = data.get("people", [])
 
@@ -44,34 +43,15 @@ def calculate():
         for i in group:
             per_person_raw[i] += share
 
-    if unit <= 1 or not preserve_total:
-        def round_to_unit(x, u):
-            if u <= 1:
-                return round(x)
-            q = x / u
-            r = round(q)
-            return int(r * u)
-        final = [round_to_unit(v, unit) for v in per_person_raw]
-    else:
-        floors = []
-        fracs = []
-        sum_floors = 0
-        for v in per_person_raw:
-            floored = int(floor(v / unit) * unit)
-            floors.append(floored)
-            sum_floors += floored
-            fracs.append(v - floored)
+    
+# Always ceil to the given unit; totals may not match grand_total by design
+def ceil_to_unit(x, u):
+    if u <= 1:
+        return int(math.ceil(x))
+    q = x / u
+    return int(math.ceil(q) * u)
+final = [ceil_to_unit(v, unit) for v in per_person_raw]
 
-        diff = max(0, int(grand_total - sum_floors))
-        k = int(diff // unit) if unit > 0 else 0
-        order = sorted(range(len(fracs)), key=lambda i: fracs[i], reverse=True)
-        final = floors[:]
-        idx = 0
-        while k > 0 and idx < len(order):
-            i = order[idx]
-            final[i] += unit
-            k -= 1
-            idx += 1
 
     results = []
     for i, p in enumerate(people):
@@ -97,8 +77,7 @@ def calculate():
             "count": int(group_cnt),
         })
 
-    return jsonify({
-        "grand_total": int(grand_total),
+    return jsonify({"grand_total": int(grand_total), "grand_final_total": int(sum(final)),
         "per_round": per_round,
         "results": results,
     })
