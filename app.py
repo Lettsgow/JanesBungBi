@@ -13,7 +13,7 @@ def calculate():
     # Request JSON format:
     # {
     #   "unit": 100,
-    #       #   "round_amounts": [a1,a2,a3,a4],
+    #   "round_amounts": [a1,a2,a3,a4],
     #   "people": [
     #     {"name": "홍길동", "attend": [true,false,true,false]},
     #     ...
@@ -24,11 +24,12 @@ def calculate():
     round_amounts = data.get("round_amounts", [0,0,0,0])
     people = data.get("people", [])
 
+    # normalize
     round_amounts = (round_amounts + [0,0,0,0])[:4]
-
     names = [p.get("name","").strip() for p in people]
     attendance = [p.get("attend", [False,False,False,False])[:4] for p in people]
 
+    # 1) 차수별 1/N로 raw 분배
     per_person_raw = [0.0 for _ in people]
     grand_total = sum(round_amounts)
 
@@ -36,25 +37,25 @@ def calculate():
         amt = float(round_amounts[j] or 0)
         if amt <= 0:
             continue
-        group = [i for i, p in enumerate(people) if j < len(attendance[i]) and bool(attendance[i][j])]
+        group = [i for i, _ in enumerate(people) if j < len(attendance[i]) and bool(attendance[i][j])]
         if len(group) == 0:
             continue
         share = amt / len(group)
         for i in group:
             per_person_raw[i] += share
 
-    
-# Always ceil to the given unit; totals may not match grand_total by design
-def ceil_to_unit(x, u):
-    if u <= 1:
-        return int(math.ceil(x))
-    q = x / u
-    return int(math.ceil(q) * u)
-final = [ceil_to_unit(v, unit) for v in per_person_raw]
+    # 2) 무조건 올림(ceil)으로 반올림. 총액 일치 보장하지 않음
+    def ceil_to_unit(x, u):
+        if u <= 1:
+            return int(math.ceil(x))
+        q = x / u
+        return int(math.ceil(q) * u)
 
+    final = [ceil_to_unit(v, unit) for v in per_person_raw]
 
+    # 3) 응답 구성
     results = []
-    for i, p in enumerate(people):
+    for i, _ in enumerate(people):
         labels = []
         for j, flag in enumerate(attendance[i]):
             if flag and j < 4:
@@ -62,12 +63,14 @@ final = [ceil_to_unit(v, unit) for v in per_person_raw]
         results.append({
             "name": names[i] if names[i] else f"참가자{i+1}",
             "attended": ", ".join(labels),
-            "raw_sum": round(per_person_raw[i]),
+            "raw_sum": int(round(per_person_raw[i])),
             "final_sum": int(final[i]),
         })
 
+    # 이름순 정렬
     results.sort(key=lambda r: r["name"])
 
+    # 차수 요약
     per_round = []
     for j in range(4):
         group_cnt = sum(1 for i in range(len(people)) if j < len(attendance[i]) and attendance[i][j])
@@ -77,7 +80,9 @@ final = [ceil_to_unit(v, unit) for v in per_person_raw]
             "count": int(group_cnt),
         })
 
-    return jsonify({"grand_total": int(grand_total), "grand_final_total": int(sum(final)),
+    return jsonify({
+        "grand_total": int(grand_total),
+        "grand_final_total": int(sum(final)),
         "per_round": per_round,
         "results": results,
     })
